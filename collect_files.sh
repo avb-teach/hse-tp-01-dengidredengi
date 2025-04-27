@@ -43,7 +43,12 @@ copy() {
     while [ -e "$path" ]; do
         name="${filename%.*}"
         exten="${filename##*.}"
-        [ "$name" = "$filename" ] && exten="" || exten=".$exten"
+        if [ "$name" = "$filename" ]; then
+            exten=""
+        else
+            exten=".$exten"
+        fi
+        
         path="$output_dir/${name}_$counter$exten"
         ((counter++))
     done
