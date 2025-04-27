@@ -36,8 +36,9 @@ mkdir -p "$output_dir" || {
 
 copy() {
     local src="$1"
+    local output_dir="$2"
     local filename=$(basename -- "$src")
-    local clean_filename=$(echo "$filename" | sed 's/ \././g')
+    local clean_filename=$(echo "$filename" | tr -d ' ')
     local path="$output_dir/$clean_filename"
     local counter=1
 
@@ -58,7 +59,6 @@ copy() {
     }
 }
 
-export -f copy
 export output_dir
 
 if [ -n "$max_depth" ]; then
@@ -66,12 +66,8 @@ if [ -n "$max_depth" ]; then
         echo "Ошибка: --max_depth должен быть числом"
         exit 1
     fi
-    find "$input_dir" -maxdepth "$max_depth" -type f -print0 | while IFS= read -r -d '' file; do
+    find "$input_dir" -maxdepth "$max_depth" -type f -exec bash -c 'copy "$0" "$1"' {} "$output_dir" \;
         copy "$file"
-    done
-
 else
-    find "$input_dir" -type f -print0 | while IFS= read -r -d '' file; do
-        copy "$file"
-    done
+    find "$input_dir" -type f -exec bash -c 'copy "$0" "$1"' {} "$output_dir" \;
 fi
