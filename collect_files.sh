@@ -34,7 +34,6 @@ mkdir -p "$output_dir" || {
     exit 1
 }
 
-
 copy() {
     local src="$1"
     local filename=$(basename -- "$src")
@@ -70,8 +69,4 @@ else
     find "$input_dir" -type f -print0 | while IFS= read -r -d '' file; do
         copy "$file"
     done
-fi 
-
-
-
-
+fi
