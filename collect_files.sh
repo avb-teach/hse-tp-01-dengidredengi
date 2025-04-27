@@ -37,28 +37,28 @@ mkdir -p "$output_dir" || {
 copy() {
     local src="$1"
     local filename=$(basename -- "$src")
-    local path="$output_dir/$filename"
+    local clean_filename=$(echo "$filename" | sed 's/ \././g')
+    local path="$output_dir/$clean_filename"
     local counter=1
 
     while [ -e "$path" ]; do
-        name="${filename%.*}"
-        exten="${filename##*.}"
-        if [ "$name" = "$filename" ]; then
-            exten=""
+        local name="${clean_filename%.*}"
+        local exten="${clean_filename##*.}"
+        if [ "$name" = "$clean_filename" ]; then
+            path="$output_dir/${clean_filename}_$counter"
         else
-            exten=".$exten"
+            path="$output_dir/${name}_$counter.${exten}"
         fi
-        
-        path="$output_dir/${name}_$counter$exten"
         ((counter++))
     done
 
     cp -- "$src" "$path" || {
-        echo "Ошибка: Не удалось скопировать '$src' в '$path'"
+        echo "Ошибка: Не получилось скопировать '$src' в '$path'"
         return 1
     }
 }
 
+export -f copy
 export output_dir
 
 if [ -n "$max_depth" ]; then
