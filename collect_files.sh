@@ -36,22 +36,15 @@ mkdir -p "$output_dir" || {
 
 copy() {
     local src="$1"
-    local output_dir="$2"
-    local filename=$(basename -- "$src")
-    local clean_filename=$(echo "$filename" | tr -d ' ')
-    local path="$output_dir/$clean_filename"
-    local counter=1
+    local relative_path="${src#$input_dir/}"
+    local clean_relative_path=$(echo "$relative_path" | sed 's/ \././g')
+    local path="$output_dir/$clean_relative_path"
+    local app_dir=$(dirname "$path")
 
-    while [ -e "$path" ]; do
-        local name="${clean_filename%.*}"
-        local exten="${clean_filename##*.}"
-        if [ "$name" = "$clean_filename" ]; then
-            path="$output_dir/${clean_filename}_$counter"
-        else
-            path="$output_dir/${name}_$counter.${exten}"
-        fi
-        ((counter++))
-    done
+    mkdir -p "$app_dir" || {
+        echo "Ошибка: Не удалось создать директорию '$app_dir'"
+        return 1
+    }
 
     cp -- "$src" "$path" || {
         echo "Ошибка: Не получилось скопировать '$src' в '$path'"
@@ -59,15 +52,25 @@ copy() {
     }
 }
 
-export output_dir
+export -f copy
+export output_dir input_dir
 
 if [ -n "$max_depth" ]; then
     if ! [[ "$max_depth" =~ ^[0-9]+$ ]]; then
         echo "Ошибка: --max_depth должен быть числом"
         exit 1
     fi
-    find "$input_dir" -maxdepth "$max_depth" -type f -exec bash -c 'copy "$0" "$1"' {} "$output_dir" \;
+    find "$input_dir" -mindepth 1 -maxdepth "$max_depth" -type f -print0 | while IFS= read -r -d '' file; do
         copy "$file"
+    done
+
+    find "$input_dir" -mindepth 1 -maxdepth "$max_depth" -type d -print0 | while IFS= read -r -d '' dir; do
+        relative_path="${dir#$input_dir/}"
+        clean_relative_path=$(echo "$relative_path" | sed 's/ \././g')
+        mkdir -p "$output_dir/$clean_relative_path"
+    done
 else
-    find "$input_dir" -type f -exec bash -c 'copy "$0" "$1"' {} "$output_dir" \;
+    find "$input_dir" -type f -print0 | while IFS= read -r -d '' file; do
+        copy "$file"
+    done
 fi
