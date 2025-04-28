@@ -76,17 +76,6 @@ if [ -n "$max_depth" ]; then
         copy "$path"
     done
 
-    find "$input_dir" -mindepth "$max_depth" -maxdepth "$max_depth" -type d -print0 | \
-    while IFS= read -r -d '' dir; do
-        relative_path="${dir#$input_dir/}"
-        clean_relative_path=$(
-            echo "$relative_path" | 
-            sed -e 's|/ *\./|/|g' \
-            -e 's|/ *\.$|/|' \
-            -e 's|/ */|/|g'
-    )
-        mkdir -p "$output_dir/$clean_relative_path"
-    done
 else
     find "$input_dir" \(-type f -o -type d\) -print0 | \
     while IFS= read -r -d '' path; do
