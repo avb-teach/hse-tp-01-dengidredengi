@@ -18,20 +18,19 @@ while [ $# -gt  0 ]; do
     esac
 done
 
-if [ -z "$input_dir" ] || [ -z "$output_dir" ]; then 
-    echo "Аргументов использовано: $0 [--max_depth N]"
-    echo "Ожидалось: <входная_директория> <выходная_директория>"
+if [ -z "$input_dir" ] || [ -z "$output_dir" ]; then
     exit 1
 fi
 
 if [ ! -d "$input_dir" ]; then
-    echo "Ошибка: Входная директория '$input_dir' не существует"
     exit 1
 fi
 
-mkdir -p "$output_dir" || {
-    echo "Ошибка: Не получилось создать выходную директорию '$output_dir'"
-    exit 1
+mkdir -p "$output_dir" || exit 1
+
+export output_dir input_dir max_depth
+get_depth(){
+    echo "${1//[^\/]/}" | wc -c
 }
 
 copy() {
@@ -40,42 +39,41 @@ copy() {
     local clean_relative_path=$(echo "$relative_path" | sed 's/ \././g' | tr -s '/')
     local dest="$output_dir/$clean_relative_path"
 
-    if [ -d "$src" ]; then
-        mkdir -p "$dest"
-    else 
+    src_depth=$(get_depth "$relavtive_path")
+    if [ -n "$max_depth" ] && [ "$src_depth" -gt "$max_depth" ]; then
+        path_cut=$(echo "$clean_relative_path" | cut -d'/' -f1-"$max_depth")
+        mkdir -p "$output_dir/$path_cut"
+        dest="$output_dir/$path_cut/$(basename "$src")"
+    else
         mkdir -p "$(dirname "$dest")"
-        local filename="$(basename "$dest")"
-        local name="${filename%.*}"
-        local ext_file="${filename##*.}"
-        [ "$name" = "$filename" ] && ext_file="" || ext_file=".$ext_file"
-
-        local count=1
-        local main_path="$(dirname "$dest")/$name"
-        local fin_path="$main_path$ext_file"
-        while [ -e "$fin_path" ]; do
-            fin_path="${main_path}_${count}${ext_file}"
-            ((count++))
-        done
-
-        cp -- "$src" "$fin_path" || return 1
     fi
+
+    local filename="$(basename "$dest")"
+    local name="${filename%.*}"
+    local ext_file="${filename##*.}"
+    [ "$name" = "$filename" ] && ext_file="" || ext_file=".$ext_file"
+
+    local count=1
+    local path_dest="$dest"
+    while [ -e "$path_dest" ]; do
+        path_dest="$(dirname "$dest")/${name}_${count}${ext_file}"
+        ((count++))
+    done
+    
+    cp -- "$src" "$path_dest"
 }
 
-export -f copy
-export output_dir input_dir
+find "$input_dir" -type d -print0 | \
+    while IFS= read -r -d '' dir; do
+        retemp="${dir#$input_dir/}"
+        clean_retemp=$(echo "$retemp" | sed 's/ \././g' | tr -s '/')
+        depth_dir=$(get_depth "$retemp")
+        if [ -z "$max_depth" ] || [ "$depth_dir" -le "$max_depth" ]; then
+        mkdir -p "$output_dir/$clean_retemp"
+        fi
+    done
 
-if [ -n "$max_depth" ]; then
-    if ! [[ "$max_depth" =~ ^[0-9]+$ ]]; then
-        echo "Ошибка: --max_depth должен быть числом"
-        exit 1
-    fi
-    find "$input_dir" -mindepth 1 -maxdepth "$max_depth" \( -type f -o -type d \) -print0 | \
-    while IFS= read -r -d '' path; do
-        copy "$path"
-    done
-else
-    find "$input_dir" -mindepth 1 \( -type f -o -type d \) -print0 | \
-    while IFS= read -r -d '' path; do
-        copy "$path"
-    done
-fi
+find "$input_dir" -type f -print0 | \
+while IFS= read -r -d '' file; do
+    copy "$file"
+done
