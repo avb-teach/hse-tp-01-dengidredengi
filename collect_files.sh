@@ -39,7 +39,7 @@ copy() {
     local clean_relative_path=$(echo "$relative_path" | sed 's/ \././g' | tr -s '/')
     local dest="$output_dir/$clean_relative_path"
 
-    src_depth=$(get_depth "$relavtive_path")
+    src_depth=$(get_depth "$relative_path")
     if [ -n "$max_depth" ] && [ "$src_depth" -gt "$max_depth" ]; then
         path_cut=$(echo "$clean_relative_path" | cut -d'/' -f1-"$max_depth")
         mkdir -p "$output_dir/$path_cut"
