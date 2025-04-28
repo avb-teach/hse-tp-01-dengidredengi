@@ -37,48 +37,40 @@ mkdir -p "$output_dir" || {
 copy() {
     local src="$1"
     local relative_path="${src#$input_dir/}"
-    local clean_relative_path=$(
-        echo "$relative_path" | 
-        sed -e 's|/ *\./|/|g' \
-            -e 's|/ *\.$|/|' \
-            -e 's|/ */|/|g'
-    )
-
+    local clean_relative_path=$(echo "$relative_path" | sed 's/ \././g')
     local path="$output_dir/$clean_relative_path"
+    local app_dir=$(dirname "$path")
 
-    if [ -d "$src" ]; then
-        mkdir -p "$path" || return 1
-    else
-        local app_dir=$(dirname "$path")
-        mkdir -p "$app_dir" || return 1
+    mkdir -p "$app_dir" || {
+        echo "Ошибка: Не удалось создать директорию '$app_dir'"
+        return 1
+    }
 
-        local all_name="${path##*/}"
-        local filename="${all_name%.*}"
-        local ext_file=""
-        [[ "$all_name" =~ \.[^.]*$ ]] && ext_file=".${all_name##*.}"
-        local count=1
-        local new_path="$path"
-        while [ -e "$new_path" ]; do
-            new_path="${app_dir}/${filename}${count}${ext_file}"
-            ((count++))  
-        done 
-    
-        cp -- "$src" "$new_path" || return 1
-    fi
+    cp -- "$src" "$path" || {
+        echo "Ошибка: Не получилось скопировать '$src' в '$path'"
+        return 1
+    }
 }
 
 export -f copy
 export output_dir input_dir
 
 if [ -n "$max_depth" ]; then
-    find "$input_dir" -mindepth 1 -maxdepth "$max_depth" \( -type f -o -type d \) -print0 | \
-    while IFS= read -r -d '' path; do
-        copy "$path"
+    if ! [[ "$max_depth" =~ ^[0-9]+$ ]]; then
+        echo "Ошибка: --max_depth должен быть числом"
+        exit 1
+    fi
+    find "$input_dir" -mindepth 1 -maxdepth "$max_depth" -type f -print0 | while IFS= read -r -d '' file; do
+        copy "$file"
     done
 
+    find "$input_dir" -mindepth 1 -maxdepth "$max_depth" -type d -print0 | while IFS= read -r -d '' dir; do
+        relative_path="${dir#$input_dir/}"
+        clean_relative_path=$(echo "$relative_path" | sed 's/ \././g')
+        mkdir -p "$output_dir/$clean_relative_path"
+    done
 else
-    find "$input_dir" \(-type f -o -type d\) -print0 | \
-    while IFS= read -r -d '' path; do
-        copy "$path"
+    find "$input_dir" -type f -print0 | while IFS= read -r -d '' file; do
+        copy "$file"
     done
 fi
