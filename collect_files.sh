@@ -38,17 +38,18 @@ copy() {
     local relative_path="${src#$input_dir/}"
     local clean_relative_path=$(echo "$relative_path" | sed 's/ \././g' | tr -s '/')
     local dest="$output_dir/$clean_relative_path"
-
+    local filename="$(basename "$clean_relative_path")"
+    local path_cut=""
     src_depth=$(get_depth "$relative_path")
     if [ -n "$max_depth" ] && [ "$src_depth" -gt "$max_depth" ]; then
         path_cut=$(echo "$clean_relative_path" | cut -d'/' -f1-"$max_depth")
         mkdir -p "$output_dir/$path_cut"
-        dest="$output_dir/$path_cut/$(basename "$src")"
+        dest="$output_dir/$path_cut/$filename"
     else
+        dest="$output_dir/$clean_relative_path"
         mkdir -p "$(dirname "$dest")"
     fi
 
-    local filename="$(basename "$dest")"
     local name="${filename%.*}"
     local ext_file="${filename##*.}"
     [ "$name" = "$filename" ] && ext_file="" || ext_file=".$ext_file"
@@ -66,8 +67,8 @@ copy() {
 find "$input_dir" -type d -print0 | \
     while IFS= read -r -d '' dir; do
         retemp="${dir#$input_dir/}"
-        clean_retemp=$(echo "$retemp" | sed 's/ \././g' | tr -s '/')
-        depth_dir=$(get_depth "$retemp")
+        clean_retemp=$(echo "$retemp" | tr -s '/')
+        depth_dir=$(get_depth "$clean_retemp")
         if [ -z "$max_depth" ] || [ "$depth_dir" -le "$max_depth" ]; then
         mkdir -p "$output_dir/$clean_retemp"
         fi
