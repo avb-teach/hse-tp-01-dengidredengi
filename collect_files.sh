@@ -37,12 +37,20 @@ copy() {
     local src="$1"
     local relative_path="${src#$input_dir/}"
     local clean_relative_path=$(echo "$relative_path" | sed 's/ \././g' | tr -s '/')
-    local dest="$output_dir/$clean_relative_path"
     local filename="$(basename "$clean_relative_path")"
     local path_cut=""
-    src_depth=$(get_depth "$relative_path")
+    local src_depth=$(get_depth "$relative_path")
+
     if [ -n "$max_depth" ] && [ "$src_depth" -gt "$max_depth" ]; then
-        path_cut=$(echo "$clean_relative_path" | cut -d'/' -f1-"$max_depth")
+        local path_base=$(echo "$clean_relative_path" | cut -d'/' -f1-"$max_depth")
+        local remain_path=$(echo "$clean_relative_path" | cut -d'/'-f"$((max_depth+1))"-)
+        local dir_last=$(dirname "$remain_path")
+        if [ "$dir_last" != "." ]; then
+            path_cut="$path_base/$dir_last"
+        else
+            path_cut="$path_base"
+        fi
+
         mkdir -p "$output_dir/$path_cut"
         dest="$output_dir/$path_cut/$filename"
     else
