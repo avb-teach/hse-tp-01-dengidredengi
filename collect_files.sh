@@ -43,7 +43,7 @@ copy() {
 
     if [ -n "$max_depth" ] && [ "$src_depth" -gt "$max_depth" ]; then
         local path_base=$(echo "$clean_relative_path" | cut -d'/' -f1-"$max_depth")
-        local remain_path=$(echo "$clean_relative_path" | cut -d'/'-f"$((max_depth+1))"-)
+        local remain_path=$(echo "$clean_relative_path" | cut -d'/' -f"$((max_depth+1))"-)
         local dir_last=$(dirname "$remain_path")
         if [ "$dir_last" != "." ]; then
             path_cut="$path_base/$dir_last"
@@ -78,7 +78,7 @@ find "$input_dir" -type d -print0 | \
         clean_retemp=$(echo "$retemp" | tr -s '/')
         depth_dir=$(get_depth "$clean_retemp")
         if [ -z "$max_depth" ] || [ "$depth_dir" -le "$max_depth" ]; then
-        mkdir -p "$output_dir/$clean_retemp"
+            [ -n "clean_retemp" ] && mkdir -p "$output_dir/$clean_retemp"
         fi
     done
 
