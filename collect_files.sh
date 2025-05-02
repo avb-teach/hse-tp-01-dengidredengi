@@ -38,25 +38,22 @@ copy() {
     local relative_path="${src#$input_dir/}"
     local clean_relative_path=$(echo "$relative_path" | sed 's/ \././g' | tr -s '/')
     local filename="$(basename "$clean_relative_path")"
-    local path_cut=""
-    local src_depth=$(get_depth "$relative_path")
 
-    if [ -n "$max_depth" ] && [ "$src_depth" -gt "$max_depth" ]; then
-        local path_base=$(echo "$clean_relative_path" | cut -d'/' -f1-"$max_depth")
-        local remain_path=$(echo "$clean_relative_path" | cut -d'/' -f"$((max_depth+1))"-)
-        local dir_last=$(dirname "$remain_path")
-        if [ "$dir_last" != "." ]; then
-            path_cut="$path_base/$dir_last"
-        else
-            path_cut="$path_base"
+    if [ -n "$max_depth" ]; then
+        local src_depth=$(get_depth "$clean_relative_path")
+        if [ "$src_depth" -gt "$max_depth" ]; then
+            IFS='/' read -ra parts <<< "$clean_relative_path"
+            local path_new=""
+            for ((i=0; i<max_depth-1; i++)); do
+                path_new="${path_new}${parts[i]}/"
+            done
+            path_new="${path_new}${filename}"
+            clean_relative_path="$path_new"
         fi
-
-        mkdir -p "$output_dir/$path_cut"
-        dest="$output_dir/$path_cut/$filename"
-    else
-        dest="$output_dir/$clean_relative_path"
-        mkdir -p "$(dirname "$dest")"
     fi
+    
+    local dest="$output_dir/$clean_relative_path"
+    mkdir -p "$(dirname "$dest")"
 
     local name="${filename%.*}"
     local ext_file="${filename##*.}"
@@ -71,16 +68,6 @@ copy() {
     
     cp -- "$src" "$path_dest"
 }
-
-find "$input_dir" -type d -print0 | \
-    while IFS= read -r -d '' dir; do
-        retemp="${dir#$input_dir/}"
-        clean_retemp=$(echo "$retemp" | tr -s '/')
-        depth_dir=$(get_depth "$clean_retemp")
-        if [ -z "$max_depth" ] || [ "$depth_dir" -le "$max_depth" ]; then
-            [ -n "clean_retemp" ] && mkdir -p "$output_dir/$clean_retemp"
-        fi
-    done
 
 find "$input_dir" -type f -print0 | \
 while IFS= read -r -d '' file; do
